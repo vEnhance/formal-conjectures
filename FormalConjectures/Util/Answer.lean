@@ -87,17 +87,41 @@ def answerElab : TermElab := fun stx expectedType? => do
       let some declName := (← read).declName?
         | throwError "Failed to find the name of the declaration"
       let answerName : Name := declName.str "_answer"
-      let levelParamNames : List Name := (collectLevelParams {} exprType).params.toList
+      -- Collect free variables from the answer expression and its type, then
+      -- close under local context dependencies using a pure reverse fold.
+      -- A single reverse pass suffices: since earlier-declared variables cannot
+      -- depend on later ones, this propagates transitive deps backward correctly.
+      let lctx ← getLCtx
+      -- `Lean.collectFVars` takes the accumulator state first, then the expression.
+      -- We use `.fvarIds : Array FVarId` for safe pure folding.
+      let combinedState := Lean.collectFVars (Lean.collectFVars {} exprType) expr
+      let initialFvarSet : FVarIdHashSet :=
+        combinedState.fvarIds.foldl (fun s id => s.insert id) {}
+      let neededFvarSet : FVarIdHashSet := lctx.foldr (fun decl needed =>
+        if needed.contains decl.fvarId then
+          (Lean.collectFVars {} decl.type).fvarIds.foldl (fun s id => s.insert id) needed
+        else
+          needed) initialFvarSet
+      -- Collect needed fvars in declaration order for stable parameter ordering.
+      let fvars : Array Expr := lctx.foldl (init := #[]) fun acc decl =>
+        if neededFvarSet.contains decl.fvarId then acc.push decl.toExpr else acc
+      -- Abstract the type and value over the free variables.
+      let abstractedType ← Meta.mkForallFVars fvars exprType
+      let abstractedValue ← Meta.mkLambdaFVars fvars expr
+      let levelParamNames : List Name := (collectLevelParams {} abstractedType).params.toList
       let answerAuxiliaryDecl : DefinitionVal := {
         name := answerName
         levelParams := levelParamNames
-        type := exprType
-        value := expr
+        type := abstractedType
+        value := abstractedValue
         hints := .abbrev
         safety := .safe
       }
       addDecl (.defnDecl answerAuxiliaryDecl) true
-      return mkAnswerAnnotation (.const answerName <| levelParamNames.map Level.param)
+      -- Return the auxiliary constant applied to the free variables.
+      let result := fvars.foldl (fun acc fvar => .app acc fvar)
+        (.const answerName <| levelParamNames.map Level.param)
+      return mkAnswerAnnotation result
     | .alwaysTrue =>
       -- If the answer is a `sorry` of type `Prop` then default to `True` in this setting
       if expectedType? == some (Expr.sort .zero) && a == (← `(term| sorry)) then
