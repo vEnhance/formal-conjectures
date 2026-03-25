@@ -98,6 +98,22 @@ $$\sum_{n \geq 0} a_n x^n = 1 + \frac{1}{1-x} + \frac{1}{(1-x)^2}\left(\frac{1}{
   \sum_{k \geq 0} x^{2^{k+1} + k}\right).$$
 
 Equivalently, a(n) equals the n-th coefficient of this generating function.
+
+However, the reference quoted in the OEIS sequence
+
+> J.-P. Allouche and J. Shallit, "On the subword complexity of the fixed point of a → aab, b → b,
+> and generalizations," arXiv:1605.02361 [math.CO], 2016.
+
+provides an explicit formula
+$$ a_n = \sum_{i=0}^{n} \min(2^i,n-i+1). $$
+
+If one takes this as a definition of a(n) instead,
+it becomes straightforward to prove the conjecture.
+See https://github.com/AxiomMath/gdm-formal-conjectures/blob/main/docs/OeisA6697.md
+for a formal proof of the generating function using this definition.
+
+Hence, a formalization of [arXiv:1605.02361](https://arxiv.org/abs/1605.02361)
+would complete a formal proof as below.
 -/
 @[category research solved, AMS 68]
 theorem conjecture (n : ℕ) :
