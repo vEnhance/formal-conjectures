@@ -38,7 +38,6 @@ def categoryToString : Category → String
   | .graduate => "graduate"
   | .research .open => "research open"
   | .research .solved => "research solved"
-  | .research (.formallySolvedAt _ _) => "research formally solved"
   | .test => "test"
   | .API => "API"
 
@@ -148,6 +147,7 @@ unsafe def main (args : List String) : IO Unit := do
     let env ← getEnv
     let tags ← getTags
     let subjectTags ← getSubjectTags
+    let formalProofTags ← getFormalProofTags
 
     -- Create maps for quick lookup
     let mut categoryMap : Std.HashMap Name (List String) := {}
@@ -155,6 +155,11 @@ unsafe def main (args : List String) : IO Unit := do
     for tag in tags do
       categoryMap := categoryMap.insert tag.declName (categoryToString tag.category :: categoryMap.getD tag.declName [])
       categoryFullMap := categoryFullMap.insert tag.declName tag
+
+    -- Create formal proof map
+    let mut formalProofMap : Std.HashMap Name FormalProofTag := {}
+    for tag in formalProofTags do
+      formalProofMap := formalProofMap.insert tag.declName tag
 
     let mut subjectMap : Std.HashMap Name (List String) := {}
     for tag in subjectTags do
@@ -180,12 +185,10 @@ unsafe def main (args : List String) : IO Unit := do
               let docstring ← findDocString? env name
               if docstring.isNone then
                 IO.eprintln s!"WARNING: Theorem {name} (category: {cats.head!}) is missing a docstring"
+              -- Extract formal proof info from the separate formal_proof attribute
               let (formalProofKind, formalProofLink) :=
-                if let some tag := categoryFullMap.get? name then
-                  if let .research (.formallySolvedAt kind link) := tag.category then
-                    (some (formalProofKindToString kind), some link)
-                  else
-                    (none, none)
+                if let some tag := formalProofMap.get? name then
+                  (some (formalProofKindToString tag.proofKind), some tag.proofLink)
                 else
                   (none, none)
               allResults := {
