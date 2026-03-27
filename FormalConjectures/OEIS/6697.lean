@@ -117,7 +117,7 @@ for a formal proof of the generating function using this definition.
 Hence, a formalization of [arXiv:1605.02361](https://arxiv.org/abs/1605.02361)
 would complete a formal proof as below.
 -/
-@[category research solved, AMS 68]
+@[category research solved, formal_proof using lean4 at "https://github.com/AxiomMath/gdm-formal-conjectures/blob/main/OeisA6697/solution.lean", AMS 68]
 theorem conjecture (n : ℕ) :
     a n = coeff (R := ℚ) n
       ((1 - X)⁻¹ + X * (1 - X)⁻¹ ^ 2 * ((1 - X)⁻¹ - ∑' k, X ^ (2 ^ (k + 1) + k))) := by
